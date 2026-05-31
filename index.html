@@ -1,0 +1,1286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>INR Log</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500&family=DM+Mono&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #f0f4ff;
+    --surface: #ffffff;
+    --surface2: #e8edf8;
+    --border: rgba(80,100,180,0.13);
+    --border-med: rgba(80,100,180,0.25);
+    --text: #1a1830;
+    --text2: #4a4870;
+    --text3: #8b89b0;
+    --teal: #0F6E56; --teal-bg: #d4f5ea; --teal-text: #064d3a;
+    --amber: #a06010; --amber-bg: #fff0c8; --amber-text: #6b3e00;
+    --red: #b02020; --red-bg: #ffe4e4; --red-text: #7a0e0e;
+    --blue: #2952cc; --blue-bg: #dde8ff; --blue-text: #132080;
+    --purple: #6b3fbc; --purple-bg: #ede5ff; --purple-text: #3a1a80;
+    --r-md: 8px; --r-lg: 12px; --r-xl: 18px;
+    --font: 'DM Sans', system-ui, sans-serif;
+    --mono: 'DM Mono', monospace;
+  }
+  body { font-family: var(--font); background: var(--bg); color: var(--text); min-height: 100vh; font-size: 15px; line-height: 1.6; }
+  .page-wrap { max-width: 860px; margin: 0 auto; padding: 0 1.5rem 5rem; }
+  .header-banner {
+    background: linear-gradient(135deg, #2952cc 0%, #6b3fbc 100%);
+    margin: 0 -1.5rem 2rem; padding: 2rem 2rem 1.75rem;
+    display: flex; align-items: flex-end; justify-content: space-between;
+  }
+  .header-banner h1 { font-size: 24px; font-weight: 500; color: #fff; letter-spacing: -0.01em; }
+  .header-banner p { font-size: 13px; color: rgba(255,255,255,0.72); margin-top: 3px; }
+  .target-pill { font-size: 12px; background: rgba(255,255,255,0.18); color: #fff; padding: 5px 14px; border-radius: 100px; font-weight: 500; border: 1px solid rgba(255,255,255,0.3); white-space: nowrap; }
+  .tabs { display: flex; gap: 6px; margin-bottom: 1.75rem; flex-wrap: wrap; }
+  .tab { padding: 7px 18px; font-size: 13px; font-family: var(--font); border: 1px solid var(--border-med); border-radius: 100px; cursor: pointer; background: var(--surface); color: var(--text2); transition: all 0.15s; font-weight: 500; }
+  .tab:hover { background: var(--blue-bg); color: var(--blue-text); border-color: var(--blue); }
+  .tab.active { background: var(--blue); color: #fff; border-color: var(--blue); }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-xl); padding: 1.5rem; margin-bottom: 1rem; }
+  .card-title { font-size: 11px; font-weight: 500; color: var(--text3); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 1.25rem; }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media(max-width:480px){ .form-grid { grid-template-columns: 1fr; } }
+  .form-group { display: flex; flex-direction: column; gap: 6px; }
+  .form-group label { font-size: 12px; font-weight: 500; color: var(--text2); }
+  .form-group input {
+    height: 42px; border-radius: var(--r-md); border: 1.5px solid var(--border-med);
+    padding: 0 12px; font-size: 14px; font-family: var(--font); color: var(--text);
+    background: var(--bg); outline: none; transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .form-group input:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(41,82,204,0.12); background: #fff; }
+  .form-group input[readonly] {
+    background: var(--surface2); color: var(--blue-text); font-weight: 500;
+    border-color: var(--border); cursor: default; font-size: 16px;
+  }
+  .opt-label { font-size: 11px; color: var(--text3); margin-left: 4px; font-weight: 400; }
+  .full-col { grid-column: 1 / -1; }
+  .pred-inline-badge { display: inline-block; margin-left: 8px; padding: 2px 8px; border-radius: 100px; font-size: 11px; font-weight: 500; vertical-align: middle; }
+  .range-good { background: var(--teal-bg); color: var(--teal-text); }
+  .range-warn { background: var(--amber-bg); color: var(--amber-text); }
+  .range-danger { background: var(--red-bg); color: var(--red-text); }
+  .btn-primary { padding: 10px 24px; background: linear-gradient(135deg, #2952cc, #6b3fbc); color: #fff; border: none; border-radius: 100px; font-size: 14px; font-family: var(--font); font-weight: 500; cursor: pointer; transition: opacity 0.15s; }
+  .btn-primary:hover { opacity: 0.88; }
+  .btn-danger { padding: 10px 20px; background: var(--red); color: #fff; border: none; border-radius: 100px; font-size: 14px; font-family: var(--font); font-weight: 500; cursor: pointer; transition: opacity 0.15s; }
+  .btn-danger:hover { opacity: 0.88; }
+  .btn-secondary { padding: 10px 20px; background: var(--surface2); color: var(--text2); border: 1px solid var(--border-med); border-radius: 100px; font-size: 14px; font-family: var(--font); font-weight: 500; cursor: pointer; transition: all 0.15s; }
+  .btn-secondary:hover { background: var(--blue-bg); color: var(--blue-text); }
+  .btn-row { display: flex; gap: 10px; align-items: center; margin-top: 1.25rem; flex-wrap: wrap; }
+  .success-msg { font-size: 13px; color: var(--teal); opacity: 0; transition: opacity 0.3s; font-weight: 500; }
+  .success-msg.show { opacity: 1; }
+
+  /* Table */
+  .table-toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; flex-wrap: wrap; gap: 10px; }
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 640px; }
+  th { text-align: left; font-size: 11px; font-weight: 500; color: var(--text3); text-transform: uppercase; letter-spacing: 0.07em; padding: 9px 12px; border-bottom: 1.5px solid var(--border-med); white-space: nowrap; background: var(--surface2); }
+  td { padding: 10px 12px; border-bottom: 1px solid var(--border); color: var(--text); vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tbody tr.row-even td { background: #f4f6ff; }
+  tbody tr.row-odd td { background: #ffffff; }
+  tbody tr:hover td { background: var(--blue-bg) !important; cursor: pointer; }
+  tbody tr.selected td { background: #dde8ff !important; outline: 2px solid var(--blue); outline-offset: -1px; }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 100px; font-size: 11px; font-weight: 500; }
+  .badge-good { background: var(--teal-bg); color: var(--teal-text); }
+  .badge-warn { background: var(--amber-bg); color: var(--amber-text); }
+  .badge-danger { background: var(--red-bg); color: var(--red-text); }
+  .badge-nolab { background: var(--surface2); color: var(--text3); border: 1px solid var(--border-med); }
+  .delete-btn { background: none; border: none; cursor: pointer; color: var(--text3); font-size: 18px; padding: 2px 6px; border-radius: 6px; line-height: 1; transition: all 0.15s; }
+  .delete-btn:hover { color: var(--red); background: var(--red-bg); }
+  .empty-state { text-align: center; padding: 3.5rem 1rem; color: var(--text3); font-size: 14px; }
+
+  /* Edit panel */
+  .edit-panel { border: 2px solid var(--blue); border-radius: var(--r-xl); padding: 1.5rem; margin-bottom: 1rem; background: #f7f9ff; display: none; }
+  .edit-panel.show { display: block; }
+  .edit-panel-title { font-size: 13px; font-weight: 500; color: var(--blue-text); margin-bottom: 1.1rem; }
+
+  /* Modal overlay for confirm */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 1000; align-items: center; justify-content: center; }
+  .modal-overlay.show { display: flex; }
+  .modal-box { background: var(--surface); border-radius: var(--r-xl); padding: 2rem; max-width: 380px; width: 90%; box-shadow: 0 8px 32px rgba(0,0,0,0.18); }
+  .modal-box h3 { font-size: 16px; font-weight: 500; margin-bottom: 0.75rem; color: var(--text); }
+  .modal-box p { font-size: 14px; color: var(--text2); margin-bottom: 1.5rem; line-height: 1.6; }
+  .modal-btns { display: flex; gap: 10px; }
+
+  /* Chart */
+  .chart-wrap { position: relative; width: 100%; height: 300px; }
+  .chart-legend { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 1rem; font-size: 12px; color: var(--text2); }
+  .legend-item { display: flex; align-items: center; gap: 6px; }
+  .legend-dot { width: 10px; height: 10px; border-radius: 2px; }
+
+  /* Algo */
+  .algo-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-xl); padding: 1.5rem; margin-bottom: 1rem; }
+  .algo-card h3 { font-size: 15px; font-weight: 500; color: var(--text); margin-bottom: 1rem; }
+  .formula-block { background: var(--purple-bg); border: 1px solid rgba(107,63,188,0.2); border-radius: var(--r-md); padding: 1rem 1.25rem; font-family: var(--mono); font-size: 15px; color: var(--purple-text); margin-bottom: 1rem; letter-spacing: 0.01em; }
+  .algo-desc { font-size: 13px; color: var(--text2); line-height: 1.75; }
+  .stat-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 1rem; }
+  .stat-cell { border-radius: var(--r-md); padding: 12px 14px; text-align: center; }
+  .stat-cell:nth-child(1) { background: var(--blue-bg); }
+  .stat-cell:nth-child(2) { background: var(--purple-bg); }
+  .stat-cell:nth-child(3) { background: var(--teal-bg); }
+  .stat-cell .s-val { font-size: 22px; font-weight: 500; color: var(--text); }
+  .stat-cell .s-label { font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 2px; }
+  .protocol-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 1rem; }
+  @media(max-width:480px){ .protocol-grid { grid-template-columns: 1fr; } }
+  .protocol-cell { border-radius: var(--r-md); padding: 13px 15px; font-size: 13px; line-height: 1.65; }
+  .protocol-cell strong { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 4px; font-weight: 500; opacity: 0.75; }
+  .p-target { background: var(--teal-bg); color: var(--teal-text); }
+  .p-high { background: var(--red-bg); color: var(--red-text); }
+  .p-low { background: var(--amber-bg); color: var(--amber-text); }
+  .p-dose { background: var(--blue-bg); color: var(--blue-text); }
+
+  .export-btn { display: flex; align-items: center; gap: 7px; padding: 8px 16px; background: var(--teal-bg); color: var(--teal-text); border: 1px solid rgba(15,110,86,0.25); border-radius: 100px; font-size: 13px; font-family: var(--font); font-weight: 500; cursor: pointer; transition: all 0.15s; }
+  @media(max-width:600px){ .desktop-only { display: none !important; } }
+  .export-btn:hover { background: var(--teal); color: #fff; }
+
+  .filter-toggle { display:flex; align-items:center; gap:8px; cursor:pointer; user-select:none; }
+  .filter-toggle input { display:none; }
+  .toggle-track { width:36px; height:20px; background:var(--border-med); border-radius:10px; position:relative; transition:background 0.2s; flex-shrink:0; }
+  .filter-toggle input:checked ~ .toggle-track { background:var(--blue); }
+  .toggle-thumb { position:absolute; top:3px; left:3px; width:14px; height:14px; background:#fff; border-radius:50%; transition:transform 0.2s; box-shadow:0 1px 3px rgba(0,0,0,0.2); }
+  .filter-toggle input:checked ~ .toggle-track .toggle-thumb { transform:translateX(16px); }
+
+  /* Sync UI */
+  .sync-bar { display:flex; align-items:center; gap:10px; padding:10px 16px; border-radius:var(--r-md); font-size:13px; margin-bottom:1rem; flex-wrap:wrap; border:1px solid transparent; }
+  .sync-bar.synced  { background:var(--teal-bg);  color:var(--teal-text);  border-color:rgba(15,110,86,0.2); }
+  .sync-bar.syncing { background:var(--blue-bg);  color:var(--blue-text);  border-color:rgba(41,82,204,0.2); }
+  .sync-bar.offline { background:var(--amber-bg); color:var(--amber-text); border-color:rgba(160,96,16,0.2); }
+  .sync-bar.error   { background:var(--red-bg);   color:var(--red-text);   border-color:rgba(176,32,32,0.2); }
+  .sync-bar.nokey   { background:var(--surface2); color:var(--text2);      border-color:var(--border-med); }
+  .sync-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+  .synced .sync-dot  { background:var(--teal); }
+  .syncing .sync-dot { background:var(--blue); animation:sbpulse 1s infinite; }
+  .offline .sync-dot { background:var(--amber); }
+  .error .sync-dot   { background:var(--red); }
+  .nokey .sync-dot   { background:var(--text3); }
+  @keyframes sbpulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+  .sync-btn { margin-left:auto; padding:4px 14px; font-size:12px; font-family:var(--font); font-weight:500; border-radius:100px; cursor:pointer; border:1px solid currentColor; background:transparent; color:inherit; white-space:nowrap; }
+  .sync-btn:hover { opacity:0.7; }
+  /* Setup modal */
+  .setup-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.45); z-index:2000; align-items:center; justify-content:center; }
+  .setup-overlay.show { display:flex; }
+  .setup-box { background:var(--surface); border-radius:var(--r-xl); padding:2rem; max-width:420px; width:93%; box-shadow:0 8px 32px rgba(0,0,0,0.18); }
+  .setup-box h3 { font-size:17px; font-weight:500; margin-bottom:0.5rem; }
+  .setup-box p  { font-size:13px; color:var(--text2); margin-bottom:1.25rem; line-height:1.65; }
+  .setup-input { width:100%; height:44px; border-radius:var(--r-md); border:1.5px solid var(--border-med); padding:0 14px; font-size:15px; font-family:var(--font); color:var(--text); background:var(--bg); outline:none; margin-bottom:1rem; }
+  .setup-input:focus { border-color:var(--blue); box-shadow:0 0 0 3px rgba(41,82,204,0.12); }
+  @media(max-width:600px){ .desktop-only { display:none !important; } }
+</style>
+</head>
+<body>
+<div class="page-wrap">
+  <div class="header-banner">
+    <div>
+      <h1>INR log</h1>
+      <p>Home meter · Predicted lab value · Trend analysis</p>
+    </div>
+    <span class="target-pill">Target: 2.5 – 3.5</span>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="showTab('log')">Log reading</button>
+    <button class="tab" onclick="showTab('table')">History</button>
+    <button class="tab" onclick="showTab('chart')">Trend chart</button>
+    <button class="tab" onclick="showTab('algo')">Algorithm</button>
+  </div>
+
+  <!-- SYNC BAR -->
+  <div id="sync-bar" class="sync-bar nokey">
+    <span class="sync-dot"></span>
+    <span id="sync-msg">Sync not configured — tap Setup to enable cross-device sync</span>
+    <button class="sync-btn" onclick="openSetup()">Setup</button>
+  </div>
+
+  <!-- LOG TAB -->
+  <div id="tab-log">
+    <div class="card">
+      <div class="card-title">New entry</div>
+      <div class="form-grid">
+        <div class="form-group full-col">
+          <label>Date</label>
+          <input type="date" id="inp-date">
+        </div>
+        <div class="form-group">
+          <label>Meter reading</label>
+          <input type="number" id="inp-meter" step="0.1" min="0.5" max="15" placeholder="e.g. 3.8" oninput="updateLogPreview();updateLogStatus()">
+        </div>
+        <div class="form-group">
+          <label>Predicted lab INR <span class="opt-label">auto-calculated</span></label>
+          <input type="text" id="inp-predicted" readonly placeholder="Enter meter reading →" id="inp-predicted">
+        </div>
+        <div class="form-group">
+          <label>Lab result <span class="opt-label">optional</span></label>
+          <input type="number" id="inp-lab" step="0.1" min="0.5" max="8.9" placeholder="e.g. 2.7" oninput="updateLogStatus();updateLogAccuracy()">
+        </div>
+        <div class="form-group">
+          <label>Status <span class="opt-label">auto-calculated</span></label>
+          <input type="text" id="inp-status" readonly placeholder="—">
+        </div>
+        <div class="form-group">
+          <label>Prediction accuracy <span class="opt-label">when lab entered</span></label>
+          <input type="text" id="inp-accuracy" readonly placeholder="—">
+        </div>
+        <div class="form-group full-col">
+          <label>Notes <span class="opt-label">optional</span></label>
+          <input type="text" id="inp-notes" placeholder="e.g. SanTan draw, 5 min after">
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn-primary" onclick="saveEntry()">Save entry</button>
+        <span class="success-msg" id="save-msg">✓ Saved</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- TABLE TAB -->
+  <div id="tab-table" style="display:none;">
+    <div class="edit-panel" id="edit-panel">
+      <div class="edit-panel-title" id="edit-panel-title">Editing row</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Date</label>
+          <input type="date" id="edit-date">
+        </div>
+        <div class="form-group">
+          <label>Meter reading</label>
+          <input type="number" id="edit-meter" step="0.1" min="0.5" max="15" oninput="updateEditPreview();updateEditStatus()">
+        </div>
+        <div class="form-group">
+          <label>Predicted lab INR <span class="opt-label">auto-calculated</span></label>
+          <input type="text" id="edit-predicted" readonly placeholder="—">
+        </div>
+        <div class="form-group">
+          <label>Lab result <span class="opt-label">optional</span></label>
+          <input type="number" id="edit-lab" step="0.1" min="0.5" max="8.9" placeholder="e.g. 2.7" oninput="updateEditStatus();updateEditAccuracy()">
+        </div>
+        <div class="form-group">
+          <label>Status <span class="opt-label">auto-calculated</span></label>
+          <input type="text" id="edit-status" readonly placeholder="—">
+        </div>
+        <div class="form-group">
+          <label>Prediction accuracy <span class="opt-label">when lab entered</span></label>
+          <input type="text" id="edit-accuracy" readonly placeholder="—">
+        </div>
+        <div class="form-group full-col">
+          <label>Notes <span class="opt-label">optional</span></label>
+          <input type="text" id="edit-notes" placeholder="e.g. SanTan draw">
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn-primary" onclick="saveEdit()">Save changes</button>
+        <button class="btn-danger" onclick="confirmDelete()">Delete</button>
+        <button class="btn-secondary" onclick="closeEdit()">Cancel</button>
+        <span class="success-msg" id="edit-save-msg">✓ Saved</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="table-toolbar">
+        <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+          <div style="font-size:13px;color:var(--text3);">Double-click a row to edit or delete</div>
+          <label class="filter-toggle">
+            <input type="checkbox" id="chk-lab-only" onchange="renderTable()">
+            <span class="toggle-track"><span class="toggle-thumb"></span></span>
+            <span style="font-size:13px;color:var(--text2);font-weight:500;">Lab results only</span>
+          </label>
+        </div>
+        <button class="export-btn desktop-only" onclick="exportExcel()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Export to Excel
+        </button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Meter</th>
+              <th>Predicted</th>
+              <th>Lab actual</th>
+              <th>Pred. Accuracy</th>
+              <th>Status</th>
+              <th>Notes</th>
+            </tr>
+          </thead>
+          <tbody id="table-body"></tbody>
+        </table>
+        <div class="empty-state" id="table-empty" style="display:none;">No entries yet.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CHART TAB -->
+  <div id="tab-chart" style="display:none;">
+    <div class="card">
+      <div class="card-title">INR readings over time</div>
+      <div class="chart-legend">
+        <span class="legend-item"><span class="legend-dot" style="background:#c0bdb5;"></span>Meter</span>
+        <span class="legend-item"><span class="legend-dot" style="background:#2952cc;"></span>Predicted lab</span>
+        <span class="legend-item"><span class="legend-dot" style="background:#0F6E56;"></span>Actual lab</span>
+        <span class="legend-item"><span class="legend-dot" style="background:rgba(15,110,86,0.18);border:1px solid rgba(15,110,86,0.3);"></span>Target zone 2.5–3.5</span>
+      </div>
+      <div class="chart-wrap"><canvas id="chart-main"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Prediction error (predicted − actual lab)</div>
+      <div class="chart-wrap"><canvas id="chart-error"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Prediction accuracy (%) — lab readings only</div>
+      <div class="chart-legend">
+        <span class="legend-item"><span class="legend-dot" style="background:rgba(15,110,86,0.65);"></span>≥ 90% (good)</span>
+        <span class="legend-item"><span class="legend-dot" style="background:rgba(160,96,16,0.65);"></span>80–90% (fair)</span>
+        <span class="legend-item"><span class="legend-dot" style="background:rgba(176,32,32,0.65);"></span>&lt; 80% (poor)</span>
+      </div>
+      <div class="chart-wrap"><canvas id="chart-accuracy"></canvas></div>
+    </div>
+  </div>
+
+  <!-- ALGO TAB -->
+  <div id="tab-algo" style="display:none;">
+    <div class="algo-card">
+      <h3>Prediction formula</h3>
+      <div class="formula-block">Predicted Lab INR = 0.5676 × Meter + 0.5890</div>
+      <div class="formula-block" style="margin-top:0.5rem;font-size:13px;background:var(--blue-bg);border-color:rgba(41,82,204,0.2);color:var(--blue-text);">Prediction Accuracy (%) = (Lab − |Lab − Predicted|) ÷ Lab × 100</div>
+      <div class="algo-desc">
+        Derived from linear regression on 26 paired readings (Oct 2025 – May 2026), where both meter and lab values were taken within minutes of each other. The meter consistently reads <strong>higher</strong> than the actual lab INR. A simple percentage (e.g. 75%) is less accurate because the offset is non-trivial at low values — the regression intercept (~0.59) corrects for this.
+      </div>
+      <div class="stat-row">
+        <div class="stat-cell"><div class="s-val">0.94</div><div class="s-label">R² fit</div></div>
+        <div class="stat-cell"><div class="s-val">±0.19</div><div class="s-label">Std error (INR)</div></div>
+        <div class="stat-cell"><div class="s-val">26</div><div class="s-label">Data points</div></div>
+      </div>
+    </div>
+    <div class="algo-card">
+      <h3>Mayo Anticoagulation protocol</h3>
+      <div class="protocol-grid">
+        <div class="protocol-cell p-target"><strong>Target INR</strong>2.5 – 3.5</div>
+        <div class="protocol-cell p-dose"><strong>Warfarin dose</strong>7.5 or 10 mg/day · 50–60 mg/week</div>
+        <div class="protocol-cell p-high"><strong>If INR &gt; 3.5</strong>Skip Aspirin 1–2 days</div>
+        <div class="protocol-cell p-low"><strong>If INR &lt; 2.5</strong>Take 162 mg Aspirin 1–2 days</div>
+      </div>
+      
+    </div>
+  </div>
+</div>
+
+<!-- Setup modal -->
+<div class="setup-overlay" id="setup-overlay">
+  <div class="setup-box">
+    <h3>&#128273; Sync setup</h3>
+    <p>Enter a secret sync key — any word or phrase you choose. Use the <strong>same key on every device</strong> to keep readings in sync. Anyone with this key can read your data, so keep it private.</p>
+    <input class="setup-input" type="password" id="setup-key-input" placeholder="Enter your sync key…" autocomplete="off">
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+      <button class="btn-primary" onclick="saveSetup()">Connect &amp; Sync</button>
+      <button class="btn-secondary" onclick="closeSetup()">Cancel</button>
+      <button class="btn-danger" style="margin-left:auto" onclick="clearSetup()">Disconnect</button>
+    </div>
+  </div>
+</div>
+
+<!-- Confirm delete modal -->
+<div class="modal-overlay" id="delete-modal">
+  <div class="modal-box">
+    <h3>Delete reading</h3>
+    <p>Are you sure you want to delete this reading? This cannot be undone.</p>
+    <div class="modal-btns">
+      <button class="btn-danger" onclick="doDelete()">Yes, delete</button>
+      <button class="btn-secondary" onclick="closeModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const SLOPE = 0.5676, INTERCEPT = 0.5890;
+
+// ── Supabase ─────────────────────────────────────────────────────
+const SB_URL   = 'https://rekhengdenismtwryuxg.supabase.co';
+const SB_ANON  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJla2hlbmdkZW5pc210d3J5dXhnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAxNTM1MjUsImV4cCI6MjA5NTcyOTUyNX0.K0HYnaAHbfGxNLuk-pgSKnyx6zzF6lqx6QJSLAOOPpI';
+const SB_TABLE = 'inr_readings';
+const SYNC_KEY_STORE = 'inr_sync_key_v1';
+let syncKey    = '';    // SHA-256 hash of user passphrase
+let syncEnabled = false;
+const KEY = 'inr_tracker_v2';
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+const SEED = [
+  {date:'2025-10-22',meter:3.1,lab:2.4,notes:''},
+  {date:'2025-11-06',meter:2.9,lab:2.3,notes:''},
+  {date:'2025-11-09',meter:3.3,lab:null,notes:''},
+  {date:'2025-11-11',meter:3.4,lab:null,notes:''},
+  {date:'2025-11-12',meter:4.0,lab:3.1,notes:''},
+  {date:'2025-11-18',meter:4.1,lab:3.1,notes:'Machine 2 was 4.2 (74%); SonoraQuest'},
+  {date:'2025-11-26',meter:4.4,lab:3.3,notes:''},
+  {date:'2025-11-28',meter:4.1,lab:null,notes:'Bridging started 29Nov2025'},
+  {date:'2025-12-01',meter:1.8,lab:1.5,notes:'Shae campus'},
+  {date:'2025-12-04',meter:1.1,lab:0.9,notes:'Bronchoscopy/cryobiopsy procedure; HM @ 5:00 am; Lab in pre-op @7:30am'},
+  {date:'2025-12-06',meter:1.1,lab:null,notes:''},
+  {date:'2025-12-07',meter:1.2,lab:null,notes:''},
+  {date:'2025-12-09',meter:1.5,lab:1.5,notes:'New monitor 5 min after San Tan lab draw'},
+  {date:'2025-12-10',meter:1.7,lab:null,notes:''},
+  {date:'2025-12-12',meter:2.3,lab:2.2,notes:'Old monitor 5 min after SanTan draw'},
+  {date:'2025-12-15',meter:2.4,lab:2.1,notes:'Old monitor 20 min before San Tan draw'},
+  {date:'2025-12-18',meter:3.0,lab:2.5,notes:'Old monitor 10 min after Mayo hosp Bldg 2'},
+  {date:'2025-12-23',meter:3.7,lab:null,notes:'Old meter first thing in morning'},
+  {date:'2025-12-26',meter:3.8,lab:null,notes:'Old meter at 7:10 pm'},
+  {date:'2025-12-29',meter:3.9,lab:3.1,notes:'Old meter - 10 min after Shae labs'},
+  {date:'2025-12-30',meter:null,lab:null,notes:'STARTED CELLCEPT, OMEPRAZOLE 40MG'},
+  {date:'2025-12-31',meter:null,lab:null,notes:'STARTED BATRIM'},
+  {date:'2026-01-04',meter:6.6,lab:null,notes:'7:00 pm; already had take warfarin but ate lots of Vit K'},
+  {date:'2026-01-05',meter:6.6,lab:null,notes:'8:00 am; ate lots of Vit K at lunch'},
+  {date:'2026-01-05',meter:5.3,lab:null,notes:'7:00 pm - Tested and then Took only 5 mg (instead of 10 mg warfarin)'},
+  {date:'2026-01-06',meter:4.8,lab:3.3,notes:'Old monitor 5 min after SanTan draw. Started CellCept 2Tabs/2x day'},
+  {date:'2026-01-08',meter:4.8,lab:null,notes:''},
+  {date:'2026-01-10',meter:4.6,lab:null,notes:''},
+  {date:'2026-01-12',meter:5.8,lab:null,notes:''},
+  {date:'2026-01-13',meter:6.9,lab:4.7,notes:'Old monitor 10 min after Shae draw. Started CellCept 3 Tabs/2x day (Target dose)'},
+  {date:'2026-01-14',meter:5.2,lab:null,notes:''},
+  {date:'2026-01-16',meter:4.0,lab:2.9,notes:'5 min after at Bldg 2 Mayo Hosp site'},
+  {date:'2026-01-18',meter:4.2,lab:null,notes:''},
+  {date:'2026-01-19',meter:3.8,lab:2.8,notes:'10 min after Shae draw'},
+  {date:'2026-01-23',meter:3.3,lab:null,notes:''},
+  {date:'2026-01-25',meter:3.4,lab:null,notes:''},
+  {date:'2026-01-27',meter:3.1,lab:null,notes:''},
+  {date:'2026-01-28',meter:3.9,lab:2.6,notes:'10 min after San Tan draw'},
+  {date:'2026-02-02',meter:4.3,lab:2.3,notes:'30 min after Lab Draw at HONOR HEALTH'},
+  {date:'2026-02-05',meter:4.4,lab:null,notes:''},
+  {date:'2026-02-09',meter:3.8,lab:null,notes:'08Feb2026 Reduced Omeprazole to 30mg'},
+  {date:'2026-02-11',meter:3.7,lab:2.4,notes:'10 min after San Tan draw'},
+  {date:'2026-02-14',meter:6.7,lab:null,notes:'Vitamin K at lunch'},
+  {date:'2026-02-15',meter:6.1,lab:null,notes:''},
+  {date:'2026-02-16',meter:4.1,lab:null,notes:''},
+  {date:'2026-02-17',meter:4.5,lab:null,notes:''},
+  {date:'2026-02-18',meter:4.7,lab:3.0,notes:'10 min after San Tan draw'},
+  {date:'2026-02-22',meter:5.1,lab:null,notes:''},
+  {date:'2026-02-24',meter:4.2,lab:null,notes:''},
+  {date:'2026-02-27',meter:4.7,lab:null,notes:''},
+  {date:'2026-03-02',meter:5.5,lab:null,notes:''},
+  {date:'2026-03-04',meter:4.2,lab:null,notes:''},
+  {date:'2026-03-06',meter:5.1,lab:null,notes:''},
+  {date:'2026-03-08',meter:5.4,lab:null,notes:''},
+  {date:'2026-03-09',meter:4.0,lab:null,notes:''},
+  {date:'2026-03-11',meter:3.8,lab:2.7,notes:'10 min after San Tan draw'},
+  {date:'2026-03-18',meter:4.4,lab:null,notes:'12Mar2026 Started 20 mg Omeprazole'},
+  {date:'2026-03-25',meter:3.5,lab:null,notes:'26Mar2026 Started 30mg Omeprazole'},
+  {date:'2026-03-27',meter:4.0,lab:null,notes:'27Mar2026 LAST BACTRIM TAKEN'},
+  {date:'2026-04-01',meter:3.4,lab:2.7,notes:'7:45 am at home; 11:15 am at Shae lab'},
+  {date:'2026-04-08',meter:3.4,lab:2.5,notes:'Mayo Bldg 2 - 5 min after lab draw'},
+  {date:'2026-04-09',meter:null,lab:null,notes:'09Apr2026 - CellCept reduced to 2000mg per day'},
+  {date:'2026-04-14',meter:3.2,lab:2.3,notes:'5 min before Shae lab draw'},
+  {date:'2026-04-21',meter:4.6,lab:3.1,notes:'5 min after San Tan draw'},
+  {date:'2026-04-26',meter:null,lab:null,notes:'Started Guaifenesin 1600 mg daily till 29Apr2026'},
+  {date:'2026-04-28',meter:5.6,lab:3.4,notes:'5 min after San Tan draw'},
+  {date:'2026-05-05',meter:3.9,lab:null,notes:''},
+  {date:'2026-05-09',meter:3.8,lab:null,notes:''},
+  {date:'2026-05-11',meter:3.4,lab:2.3,notes:'5 min after San Tan draw'},
+  {date:'2026-05-12',meter:4.2,lab:null,notes:'Home Meter at 4:30 pm'},
+  {date:'2026-05-14',meter:4.7,lab:null,notes:'Tokyo at 7:20 pm - only took 5 mg warfarin'},
+  {date:'2026-05-15',meter:4.3,lab:null,notes:'Tokyo at 9:45 pm - took 7.5 mg warfarin; Started Amoxicillin+Clavulanic Antibiotic'},
+  {date:'2026-05-16',meter:4.7,lab:null,notes:'Tokyo at 6:30 pm'},
+  {date:'2026-05-17',meter:3.6,lab:null,notes:'Tokyo at 11:00 pm'},
+  {date:'2026-05-18',meter:3.7,lab:null,notes:'Tokyo at 10:00 pm'},
+  {date:'2026-05-19',meter:5.0,lab:null,notes:'Kyoto at 8:30 pm'},
+  {date:'2026-05-20',meter:5.7,lab:null,notes:'Kyoto at 7:00 pm - too high; took only 5 mg'},
+  {date:'2026-05-21',meter:5.7,lab:null,notes:'Kyoto at 7:50 pm - took 7.5 mg'},
+  {date:'2026-05-22',meter:4.7,lab:null,notes:'Kyoto at 8:40 pm - took 7.5 mg'},
+  {date:'2026-05-23',meter:5.6,lab:null,notes:'Osaka at 8:00 pm - took only 7.5 mg (not 10)'},
+  {date:'2026-05-24',meter:6.6,lab:null,notes:'Tokyo at 8:00 pm - took only 5 mg (not 7.5)'},
+  {date:'2026-05-25',meter:6.1,lab:null,notes:'Tokyo at 5:30 pm - took only 7.5 mg'},
+  {date:'2026-05-26',meter:5.4,lab:null,notes:'Tokyo at 4:00 pm just before boarding flight home - took only 7.5 mg (not 10)'},
+  {date:'2026-05-26',meter:4.6,lab:null,notes:'Phoenix at 9:00 pm - took 7.5 mg'},
+  {date:'2026-05-28',meter:6.4,lab:4.2,notes:'5 min after San Tan draw'},
+];
+
+function predict(m) {
+  if (m == null || isNaN(m)) return null;
+  return Math.round((SLOPE * m + INTERCEPT) * 10) / 10;
+}
+
+function fmtDate(iso) {
+  if (!iso) return '';
+  const [y, m, d] = iso.split('-');
+  return String(parseInt(d)).padStart(2,'0') + '-' + MONTHS[parseInt(m)-1] + '-' + y.slice(2);
+}
+
+function loadData() {
+  try { const r = localStorage.getItem(KEY); if (r) return JSON.parse(r); } catch(e) {}
+  return SEED.map(d => ({...d}));
+}
+function saveData() { try { localStorage.setItem(KEY, JSON.stringify(entries)); } catch(e) {} }
+
+
+function inrBadge(v) {
+  if (v == null) return '<span class="badge badge-nolab">no lab</span>';
+  if (v >= 2.5 && v <= 3.5) return '<span class="badge badge-good">in range</span>';
+  if (v < 2.5) return '<span class="badge badge-warn">low</span>';
+  return '<span class="badge badge-danger">high</span>';
+}
+
+function statusBadge(meter, lab) {
+  const s = calcStatus(meter, lab);
+  if (!s) return '<span class="badge badge-nolab">—</span>';
+  if (s === 'Normal') return '<span class="badge badge-good">Normal</span>';
+  if (s === 'Low') return '<span class="badge badge-warn">Low</span>';
+  if (s === 'High') return '<span class="badge badge-danger">High</span>';
+  if (s === 'Predicted Normal') return '<span class="badge badge-good" style="opacity:0.72">Pred. Normal</span>';
+  if (s === 'Predicted Low') return '<span class="badge badge-warn" style="opacity:0.72">Pred. Low</span>';
+  return '<span class="badge badge-danger" style="opacity:0.72">Pred. High</span>';
+}
+
+function rangeBadgeClass(v) {
+  if (v == null) return '';
+  if (v >= 2.5 && v <= 3.5) return 'range-good';
+  if (v < 2.5) return 'range-warn';
+  return 'range-danger';
+}
+function rangeLabel(v) {
+  if (v == null) return '';
+  if (v >= 2.5 && v <= 3.5) return 'in range';
+  if (v < 2.5) return 'low';
+  return 'high';
+}
+
+function calcAccuracy(meter, lab) {
+  if (meter == null || lab == null || isNaN(meter) || isNaN(lab) || lab <= 0) return null;
+  const pred = predict(meter);
+  if (pred == null) return null;
+  const diff = Math.abs(lab - pred);
+  return Math.round(((lab - diff) / lab) * 1000) / 10;
+}
+
+function setAccuracyField(inputId, meterId, labId) {
+  const m = parseFloat(document.getElementById(meterId).value);
+  const l = parseFloat(document.getElementById(labId).value);
+  const inp = document.getElementById(inputId);
+  const acc = calcAccuracy(m, l);
+  if (acc === null) { inp.value = ''; inp.style.color = ''; return; }
+  inp.value = acc.toFixed(1) + '%';
+  inp.style.color = acc >= 90 ? 'var(--teal)' : acc >= 80 ? 'var(--amber)' : 'var(--red)';
+}
+
+function setPredicted(inputId, meterId) {
+  const m = parseFloat(document.getElementById(meterId).value);
+  const inp = document.getElementById(inputId);
+  if (isNaN(m)) { inp.value = ''; inp.style.color = ''; return; }
+  const p = predict(m);
+  const rc = rangeBadgeClass(p);
+  inp.value = p.toFixed(1) + '  (' + rangeLabel(p) + ')';
+  inp.style.color = rc === 'range-good' ? 'var(--teal)' : rc === 'range-warn' ? 'var(--amber)' : 'var(--red)';
+}
+
+function calcStatus(meter, lab) {
+  // If lab entered, status based on lab; else based on predicted
+  const m = (meter == null || isNaN(meter)) ? null : parseFloat(meter);
+  const l = (lab == null || isNaN(lab)) ? null : parseFloat(lab);
+  if (l != null) {
+    if (l >= 2.5 && l <= 3.5) return 'Normal';
+    return l < 2.5 ? 'Low' : 'High';
+  }
+  if (m != null) {
+    const p = predict(m);
+    if (p == null) return '';
+    if (p >= 2.5 && p <= 3.5) return 'Predicted Normal';
+    return p < 2.5 ? 'Predicted Low' : 'Predicted High';
+  }
+  return '';
+}
+
+function setStatusField(statusId, meterId, labId) {
+  const m = document.getElementById(meterId).value;
+  const l = document.getElementById(labId).value;
+  const mf = m === '' ? null : parseFloat(m);
+  const lf = l === '' ? null : parseFloat(l);
+  const status = calcStatus(mf, lf);
+  const inp = document.getElementById(statusId);
+  inp.value = status;
+  // Color coding
+  if (!status) { inp.style.color = ''; return; }
+  if (status === 'Normal') inp.style.color = 'var(--teal)';
+  else if (status === 'Low') inp.style.color = 'var(--amber)';
+  else if (status === 'High') inp.style.color = 'var(--red)';
+  else if (status === 'Predicted Normal') inp.style.color = 'var(--teal)';
+  else if (status === 'Predicted Low') inp.style.color = 'var(--amber)';
+  else inp.style.color = 'var(--red)';
+}
+
+function updateLogPreview() { setPredicted('inp-predicted', 'inp-meter'); }
+function updateLogAccuracy() { setAccuracyField('inp-accuracy', 'inp-meter', 'inp-lab'); }
+function updateLogStatus() { setStatusField('inp-status', 'inp-meter', 'inp-lab'); }
+function updateEditPreview() { setPredicted('edit-predicted', 'edit-meter'); }
+function updateEditAccuracy() { setAccuracyField('edit-accuracy', 'edit-meter', 'edit-lab'); }
+function updateEditStatus() { setStatusField('edit-status', 'edit-meter', 'edit-lab'); }
+
+let entries = loadData();
+
+let cMain = null, cErr = null, cAcc = null;
+let selectedIdx = null;
+
+function validateEntry(d, m, lv, context) {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const oneYearAgo = new Date(today); oneYearAgo.setFullYear(today.getFullYear()-1);
+  const oneMonthAgo = new Date(today); oneMonthAgo.setMonth(today.getMonth()-1);
+
+  if (!d) { alert('Date is required.'); return false; }
+  if (!m && m !== 0) { alert('Meter reading is required.'); return false; }
+
+  const dateObj = new Date(d + 'T00:00:00');
+  if (dateObj > today) { alert('Date cannot be in the future.'); return false; }
+  if (dateObj < oneYearAgo) { alert('Date cannot be older than one year.'); return false; }
+
+  const mf = parseFloat(m);
+  if (isNaN(mf) || mf < 0.5 || mf > 9.9) { alert('Meter reading must be between 0.5 and 9.9.'); return false; }
+
+  if (lv !== '' && lv != null) {
+    const lf = parseFloat(lv);
+    if (isNaN(lf) || lf < 0.5 || lf > 8.9) { alert('Lab result must be between 0.5 and 8.9.'); return false; }
+  }
+
+  if (dateObj < oneMonthAgo) {
+    return confirm('This date is more than one month ago (' + fmtDate(d) + '). Do you want to save anyway?');
+  }
+  return true;
+}
+
+async function saveEntry() {
+  const d = document.getElementById('inp-date').value;
+  const m = document.getElementById('inp-meter').value;
+  const lv = document.getElementById('inp-lab').value;
+  const n = document.getElementById('inp-notes').value.trim();
+  if (!validateEntry(d, m, lv)) return;
+  const mf = m === '' ? null : parseFloat(m);
+  const lf = lv === '' ? null : parseFloat(lv);
+  const newEntry = {date: d, meter: mf, lab: lf, notes: n};
+  if (syncEnabled) {
+    try { await sbInsert(newEntry); }
+    catch(err) { setSyncBar('error', 'Save failed: ' + err.message); return; }
+  }
+  entries.push(newEntry);
+  entries.sort((a,b) => a.date.localeCompare(b.date));
+  saveData();
+  document.getElementById('inp-meter').value = '';
+  document.getElementById('inp-lab').value = '';
+  document.getElementById('inp-notes').value = '';
+  document.getElementById('inp-predicted').value = '';
+  document.getElementById('inp-predicted').style.color = '';
+  document.getElementById('inp-status').value = '';
+  document.getElementById('inp-status').style.color = '';
+  document.getElementById('inp-accuracy').value = '';
+  document.getElementById('inp-accuracy').style.color = '';
+  const msg = document.getElementById('save-msg');
+  msg.classList.add('show');
+  setTimeout(() => msg.classList.remove('show'), 2000);
+}
+
+function renderTable() {
+  const tbody = document.getElementById('table-body');
+  const empty = document.getElementById('table-empty');
+  const labOnly = document.getElementById('chk-lab-only') && document.getElementById('chk-lab-only').checked;
+  const source = [...entries].reverse();
+  const filtered = labOnly ? source.filter(e => e.lab != null) : source;
+  if (!filtered.length) { tbody.innerHTML = ''; empty.style.display = 'block'; return; }
+  empty.style.display = 'none';
+  tbody.innerHTML = filtered.map((e, ri) => {
+    const realIdx = entries.indexOf(e);
+    const pred = predict(e.meter);
+    const hasLab = e.lab != null;
+    const hasMeter = e.meter != null;
+    const acc = (hasLab && hasMeter) ? calcAccuracy(e.meter, e.lab) : null;
+    const accStr = acc !== null ? acc.toFixed(1) + '%' : '—';
+    const accColor = acc !== null ? (acc >= 90 ? 'var(--teal)' : acc >= 80 ? 'var(--amber)' : 'var(--red)') : 'var(--text3)';
+    const rowClass = ri % 2 === 0 ? 'row-even' : 'row-odd';
+    const sel = selectedIdx === realIdx ? 'selected' : '';
+    return `<tr class="${rowClass} ${sel}" ondblclick="openEdit(${realIdx})">
+      <td style="white-space:nowrap">${fmtDate(e.date)}</td>
+      <td>${hasMeter ? e.meter.toFixed(1) : '<span style="color:var(--text3)">—</span>'}</td>
+      <td>${(hasMeter && pred != null) ? pred.toFixed(1) : '<span style="color:var(--text3)">—</span>'}</td>
+      <td>${hasLab ? e.lab.toFixed(1) : '<span style="color:var(--text3)">—</span>'}</td>
+      <td style="font-family:var(--mono);font-size:12px;color:${accColor}">${accStr}</td>
+      <td>${statusBadge(e.meter, e.lab)}</td>
+      <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text3);font-size:12px" title="${(e.notes||'').replace(/"/g,'&quot;')}">${e.notes||''}</td>
+    </tr>`;
+  }).join('');
+}
+
+function openEdit(idx) {
+  selectedIdx = idx;
+  const e = entries[idx];
+  document.getElementById('edit-panel-title').textContent = 'Editing entry — ' + fmtDate(e.date);
+  document.getElementById('edit-date').value = e.date || '';
+  document.getElementById('edit-meter').value = e.meter != null ? e.meter : '';
+  document.getElementById('edit-lab').value = e.lab != null ? e.lab : '';
+  document.getElementById('edit-notes').value = e.notes || '';
+  updateEditPreview();
+  updateEditStatus();
+  updateEditAccuracy();
+  document.getElementById('edit-panel').classList.add('show');
+  document.getElementById('edit-panel').scrollIntoView({behavior:'smooth', block:'nearest'});
+  renderTable();
+}
+
+function closeEdit() {
+  selectedIdx = null;
+  document.getElementById('edit-panel').classList.remove('show');
+  renderTable();
+}
+
+async function saveEdit() {
+  if (selectedIdx === null) return;
+  const d = document.getElementById('edit-date').value;
+  const m = document.getElementById('edit-meter').value;
+  const l = document.getElementById('edit-lab').value;
+  const n = document.getElementById('edit-notes').value.trim();
+  if (!validateEntry(d, m, l)) return;
+  const updatedEntry = {
+    id:    entries[selectedIdx].id,
+    date:  d,
+    meter: m === '' ? null : parseFloat(m),
+    lab:   l === '' ? null : parseFloat(l),
+    notes: n
+  };
+  if (syncEnabled) {
+    try { await sbUpdate(updatedEntry); }
+    catch(err) { setSyncBar('error', 'Update failed: ' + err.message); return; }
+  }
+  entries[selectedIdx] = updatedEntry;
+  entries.sort((a,b) => a.date.localeCompare(b.date));
+  saveData();
+  const msg = document.getElementById('edit-save-msg');
+  msg.classList.add('show');
+  setTimeout(() => { msg.classList.remove('show'); closeEdit(); }, 1200);
+  renderTable();
+}
+
+function confirmDelete() {
+  document.getElementById('delete-modal').classList.add('show');
+}
+function closeModal() {
+  document.getElementById('delete-modal').classList.remove('show');
+}
+async function doDelete() {
+  if (selectedIdx === null) return;
+  const deletedEntry = entries[selectedIdx];
+  if (syncEnabled && deletedEntry) {
+    try { await sbDelete(deletedEntry); }
+    catch(err) { setSyncBar('error', 'Delete failed: ' + err.message); return; }
+  }
+  entries.splice(selectedIdx, 1);
+  saveData();
+  closeModal();
+  closeEdit();
+  renderTable();
+}
+
+function exportExcel() {
+  const now  = new Date();
+  const dd   = String(now.getDate()).padStart(2,'0');
+  const mon  = MONTHS[now.getMonth()];
+  const yyyy = String(now.getFullYear());
+  const labOnlyChk = document.getElementById('chk-lab-only');
+  const labOnly    = labOnlyChk && labOnlyChk.checked;
+  const fname = labOnly
+    ? `${dd}${mon}${yyyy}-INR_Log_Lab_Only.xlsx`
+    : `${dd}${mon}${yyyy}-INR_Log_Full.xlsx`;
+
+  const exportSource = labOnly
+    ? [...entries].reverse().filter(e => e.lab != null)
+    : [...entries].reverse();
+
+  const titleStr    = `INR Log \u2014 Exported ${dd}-${mon}-${yyyy}`;
+
+  const dataRows = exportSource.map(e => {
+    const pred    = predict(e.meter);
+    const hasLab  = e.lab   != null;
+    const hasMeter = e.meter != null;
+    const acc = (hasLab && hasMeter) ? calcAccuracy(e.meter, e.lab) : null;
+    return [
+      fmtDate(e.date),
+      hasMeter ? e.meter : '',
+      (hasMeter && pred != null) ? parseFloat(pred.toFixed(2)) : '',
+      hasLab ? e.lab : '',
+      acc !== null ? parseFloat(acc.toFixed(1)) : '',
+      calcStatus(e.meter, e.lab),
+      e.notes || ''
+    ];
+  });
+
+  const buf = buildINRXlsx(titleStr, dataRows);
+  const blob = new Blob([buf], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = fname; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1500);
+}
+
+function buildINRXlsx(titleStr, dataRows) {
+
+  // ── Zip utilities ───────────────────────────────────────────
+  function u8(s)   { return new TextEncoder().encode(s); }
+  function u16(v)  { return new Uint8Array([v&0xFF,(v>>8)&0xFF]); }
+  function u32(v)  { return new Uint8Array([v&0xFF,(v>>8)&0xFF,(v>>16)&0xFF,(v>>24)&0xFF]); }
+  function cat(...a){ const n=a.reduce((s,x)=>s+x.length,0),o=new Uint8Array(n);let p=0;for(const x of a){o.set(x,p);p+=x.length;}return o; }
+  function crc32(b){
+    const t=new Uint32Array(256);
+    for(let i=0;i<256;i++){let c=i;for(let j=0;j<8;j++)c=c&1?0xEDB88320^(c>>>1):c>>>1;t[i]=c;}
+    let c=0xFFFFFFFF;
+    for(let i=0;i<b.length;i++)c=t[(c^b[i])&0xFF]^(c>>>8);
+    return (c^0xFFFFFFFF)>>>0;
+  }
+  function makeZip(files){
+    const parts=[],cents=[];let off=0;
+    for(const {name,data} of files){
+      const nb=u8(name),crc=crc32(data);
+      const loc=cat(new Uint8Array([0x50,0x4B,0x03,0x04]),u16(20),u16(0x800),u16(0),u32(0),u32(crc),u32(data.length),u32(data.length),u16(nb.length),u16(0),nb,data);
+      const cen=cat(new Uint8Array([0x50,0x4B,0x01,0x02]),u16(20),u16(20),u16(0x800),u16(0),u32(0),u32(crc),u32(data.length),u32(data.length),u16(nb.length),u16(0),u16(0),u16(0),u16(0),u32(0),u32(off),nb);
+      parts.push(loc);cents.push(cen);off+=loc.length;
+    }
+    const cdSz=cents.reduce((s,c)=>s+c.length,0);
+    const eocd=cat(new Uint8Array([0x50,0x4B,0x05,0x06]),u16(0),u16(0),u16(files.length),u16(files.length),u32(cdSz),u32(off),u16(0));
+    return cat(...parts,...cents,eocd);
+  }
+
+  // ── Shared strings ──────────────────────────────────────────
+  const strs=[],sidx={};
+  function ss(s){
+    s=String(s??'');
+    if(sidx[s]===undefined){sidx[s]=strs.length;strs.push(s);}
+    return sidx[s];
+  }
+  const HEADERS=['Date','Mtr Rdg','Prediction','Lab Value','Pred. Accuracy','Status','Notes'];
+  ss(titleStr); HEADERS.forEach(h=>ss(h));
+  dataRows.forEach(r=>{ ss(r[0]); ss(String(r[5]??'')); ss(String(r[6]??'')); });
+
+  // ── Style XML ───────────────────────────────────────────────
+  function rgb(h){return 'FF'+h;}
+  function SF(h){return `<fill><patternFill patternType="solid"><fgColor rgb="${rgb(h)}"/><bgColor indexed="64"/></patternFill></fill>`;}
+  function FT(sz,b,i,c){return `<font><sz val="${sz}"/><name val="Calibri"/>${b?'<b/>':''}${i?'<i/>':''}<color rgb="${rgb(c)}"/></font>`;}
+  function BD(st,c){const e=`<left style="${st}"><color rgb="${rgb(c)}"/></left><right style="${st}"><color rgb="${rgb(c)}"/></right><top style="${st}"><color rgb="${rgb(c)}"/></top><bottom style="${st}"><color rgb="${rgb(c)}"/></bottom>`;return `<border>${e}</border>`;}
+  function XF(nf,fi,fli,bi,hz,wr){return `<xf numFmtId="${nf}" fontId="${fi}" fillId="${fli}" borderId="${bi}" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="${hz}" vertical="center"${wr?' wrapText="1"':''}/></xf>`;}
+
+  const fonts=[
+    FT(11,0,0,'1A1830'), // 0
+    FT(18,1,0,'FFFFFF'), // 1 title
+    FT(9, 0,1,'3A4A7A'), // 2 subtitle
+    FT(11,1,0,'FFFFFF'), // 3 header
+    FT(11,0,0,'1A1830'), // 4 data
+    FT(11,1,0,'065535'), // 5 green bold
+    FT(11,1,0,'7A4500'), // 6 amber bold
+    FT(11,1,0,'8B0000'), // 7 red bold
+  ];
+  const fills=[
+    '<fill><patternFill patternType="none"/></fill>',    // 0
+    '<fill><patternFill patternType="gray125"/></fill>', // 1
+    SF('0F2A5E'), // 2 title navy
+    SF('D8E4F5'), // 3 subtitle blue
+    SF('FFFFFF'), // 4 white
+    SF('0F6E56'), // 5 header teal
+    SF('EBF3FB'), // 6 stripe odd
+    SF('FFFFFF'), // 7 stripe even
+    SF('C8F0DC'), // 8 Normal green
+    SF('FFF0C0'), // 9 Low amber
+    SF('FFD9D9'), // 10 High red
+  ];
+  const borders=[
+    '<border><left/><right/><top/><bottom/></border>', // 0
+    BD('thin',  'B8C8E0'), // 1 data
+    BD('medium','0A4A3A'), // 2 header
+  ];
+  // Style indices:
+  // 0=default 1=title 2=subtitle 3=spacer 4=header
+  // 5=ctr-odd 6=ctr-even 7=notes-odd 8=notes-even
+  // 9=num-odd 10=num-even
+  // 11=Normal 12=Low 13=High
+  // 14=acc-good-odd 15=acc-good-even 16=acc-warn-odd 17=acc-warn-even 18=acc-bad-odd 19=acc-bad-even
+  const xfs=[
+    XF(0,0,0,0,'general',0),     // 0
+    XF(0,1,2,0,'center',0),      // 1 title
+    XF(0,2,3,0,'center',0),      // 2 subtitle
+    XF(0,0,4,0,'general',0),     // 3 spacer
+    XF(0,3,5,2,'center',0),      // 4 header
+    XF(0,4,6,1,'center',0),      // 5 ctr odd
+    XF(0,4,7,1,'center',0),      // 6 ctr even
+    XF(0,4,6,1,'left',  1),      // 7 notes odd
+    XF(0,4,7,1,'left',  1),      // 8 notes even
+    XF(164,4,6,1,'center',0),    // 9  num odd
+    XF(164,4,7,1,'center',0),    // 10 num even
+    XF(0,5,8,1,'center',0),      // 11 Normal (green, always same)
+    XF(0,6,9,1,'center',0),      // 12 Low (amber)
+    XF(0,7,10,1,'center',0),     // 13 High (red)
+    XF(164,5,6,1,'center',0),    // 14 acc good odd
+    XF(164,5,7,1,'center',0),    // 15 acc good even
+    XF(164,6,6,1,'center',0),    // 16 acc warn odd
+    XF(164,6,7,1,'center',0),    // 17 acc warn even
+    XF(164,7,6,1,'center',0),    // 18 acc bad odd
+    XF(164,7,7,1,'center',0),    // 19 acc bad even
+  ];
+
+  const stylesXml=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+<numFmts count="1"><numFmt numFmtId="164" formatCode="0.0"/></numFmts>
+<fonts count="${fonts.length}">${fonts.join('')}</fonts>
+<fills count="${fills.length}">${fills.join('')}</fills>
+<borders count="${borders.length}">${borders.join('')}</borders>
+<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
+<cellXfs count="${xfs.length}">${xfs.join('')}</cellXfs>
+</styleSheet>`;
+
+  // ── Sheet rows ──────────────────────────────────────────────
+  function CL(n){let s='';n++;while(n>0){s=String.fromCharCode(64+(n%26||26))+s;n=Math.floor((n-1)/26);}return s;}
+  function A(r,c){return CL(c)+r;}
+  function SC(r,c,si,v){return `<c r="${A(r,c)}" s="${si}" t="s"><v>${ss(v)}</v></c>`;}
+  function NC(r,c,si,v){return `<c r="${A(r,c)}" s="${si}" t="n"><v>${v}</v></c>`;}
+  function EC(r,c,si){return `<c r="${A(r,c)}" s="${si}"/>`;}
+
+  const NCOLS=7;
+  const LC=CL(NCOLS-1); // CL is 0-based so NCOLS-1 gives last column letter
+  let rowsXml='';
+
+  // Row 1 title
+  rowsXml+=`<row r="1" ht="36" customHeight="1">${SC(1,0,1,titleStr)}${Array.from({length:NCOLS-1},(_,i)=>EC(1,i+1,1)).join('')}</row>`;
+  // Row 2 spacer
+  rowsXml+=`<row r="2" ht="5" customHeight="1">${Array.from({length:NCOLS},(_,i)=>EC(2,i,3)).join('')}</row>`;
+  // Row 3 headers
+  rowsXml+=`<row r="3" ht="22" customHeight="1">${HEADERS.map((h,c)=>SC(3,c,4,h)).join('')}</row>`;
+
+  // Data rows
+  dataRows.forEach((row,ri)=>{
+    const rn=ri+4, odd=ri%2===0;
+    const cS=odd?5:6, nS=odd?9:10, notS=odd?7:8;
+    const [dV,mV,pV,lV,aV,stV,ntV]=row;
+
+    let stS=cS;
+    if(stV==='Normal'||stV==='Predicted Normal') stS=11;
+    else if(stV==='Low'||stV==='Predicted Low')  stS=12;
+    else if(stV==='High'||stV==='Predicted High') stS=13;
+
+    let aS=cS;
+    if(aV!==''&&aV!=null){
+      const av=parseFloat(aV);
+      if(av>=90)      aS=odd?14:15;
+      else if(av>=80) aS=odd?16:17;
+      else            aS=odd?18:19;
+    }
+
+    rowsXml+=`<row r="${rn}">`;
+    rowsXml+=SC(rn,0,cS,dV);
+    rowsXml+=(mV!==''&&mV!=null)?NC(rn,1,nS,mV):EC(rn,1,cS);
+    rowsXml+=(pV!==''&&pV!=null)?NC(rn,2,nS,pV):EC(rn,2,cS);
+    rowsXml+=(lV!==''&&lV!=null)?NC(rn,3,nS,lV):EC(rn,3,cS);
+    rowsXml+=(aV!==''&&aV!=null)?NC(rn,4,aS,aV):EC(rn,4,cS);
+    rowsXml+=SC(rn,5,stS,stV);
+    rowsXml+=SC(rn,6,notS,ntV);
+    rowsXml+='</row>';
+  });
+
+  const colsXml=`<cols><col min="1" max="1" width="11" customWidth="1"/><col min="2" max="2" width="8" customWidth="1"/><col min="3" max="3" width="11" customWidth="1"/><col min="4" max="4" width="9" customWidth="1"/><col min="5" max="5" width="13" customWidth="1"/><col min="6" max="6" width="17" customWidth="1"/><col min="7" max="7" width="38" customWidth="1"/></cols>`;
+  const mergesXml=`<mergeCells count="1"><mergeCell ref="A1:${LC}1"/></mergeCells>`;
+
+  const sheetXml=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+<sheetViews><sheetView tabSelected="1" workbookViewId="0"/></sheetViews>
+${colsXml}
+<sheetData>${rowsXml}</sheetData>
+${mergesXml}
+<pageMargins left="0.5" right="0.5" top="0.5" bottom="0.75" header="0.3" footer="0.4"/>
+<pageSetup paperSize="1" orientation="portrait" scale="88"/>
+<headerFooter><oddFooter>&amp;CPage &amp;P of &amp;N</oddFooter></headerFooter>
+</worksheet>`;
+
+  const ssXml=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" count="${strs.length}" uniqueCount="${strs.length}">${strs.map(s=>`<si><t xml:space="preserve">${s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</t></si>`).join('')}</sst>`;
+  const wbXml=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="INR Log" sheetId="1" r:id="rId1"/></sheets><definedNames><definedName name="_xlnm.Print_Titles" localSheetId="0">'INR Log'!$1:$3</definedName></definedNames></workbook>`;
+  const wbRels=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/sharedStrings" Target="sharedStrings.xml"/><Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`;
+  const rootRels=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`;
+  const ct=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/sharedStrings.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sharedStrings+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>`;
+
+  return makeZip([
+    {name:'[Content_Types].xml',        data:u8(ct)},
+    {name:'_rels/.rels',                data:u8(rootRels)},
+    {name:'xl/workbook.xml',            data:u8(wbXml)},
+    {name:'xl/_rels/workbook.xml.rels', data:u8(wbRels)},
+    {name:'xl/worksheets/sheet1.xml',   data:u8(sheetXml)},
+    {name:'xl/sharedStrings.xml',       data:u8(ssXml)},
+    {name:'xl/styles.xml',              data:u8(stylesXml)},
+  ]);
+}
+
+
+function renderCharts() {
+  const withMeter = entries.filter(e => e.meter != null);
+  const labels = withMeter.map(e => e.date.slice(5));
+  const mData = withMeter.map(e => e.meter);
+  const pData = withMeter.map(e => predict(e.meter));
+  const lData = withMeter.map(e => e.lab);
+  const labPairs = withMeter.filter(e => e.lab != null);
+  const eLabels = labPairs.map(e => e.date.slice(5));
+  const eData = labPairs.map(e => +(predict(e.meter) - e.lab).toFixed(2));
+
+  if (cMain) cMain.destroy();
+  if (cErr) cErr.destroy();
+
+  cMain = new Chart(document.getElementById('chart-main'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { label:'Meter', data: mData, borderColor:'#c0bdb5', backgroundColor:'transparent', borderWidth:1.5, borderDash:[5,4], pointRadius:2, tension:0.3, spanGaps:true },
+        { label:'Predicted lab', data: pData, borderColor:'#2952cc', backgroundColor:'rgba(41,82,204,0.07)', fill:false, borderWidth:2, pointRadius:2, tension:0.3, spanGaps:true },
+        { label:'Actual lab', data: lData, borderColor:'#0F6E56', backgroundColor:'transparent', borderWidth:2.5, borderDash:[4,3], pointRadius:5, pointBackgroundColor:'#0F6E56', tension:0.3, spanGaps:false },
+      ]
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      plugins: { legend:{display:false}, tooltip:{mode:'index',intersect:false} },
+      scales: {
+        x:{ ticks:{autoSkip:true,maxTicksLimit:14,font:{size:10},color:'#8b89b0'}, grid:{color:'rgba(80,100,180,0.07)'} },
+        y:{ min:0, max:8, title:{display:true,text:'INR',font:{size:11},color:'#8b89b0'}, ticks:{font:{size:11},color:'#8b89b0'}, grid:{color:'rgba(80,100,180,0.07)'} }
+      }
+    },
+    plugins:[{id:'tzone',beforeDraw(chart){
+      const {ctx,scales:{x,y}}=chart;
+      ctx.save(); ctx.fillStyle='rgba(15,110,86,0.10)';
+      ctx.fillRect(x.left,y.getPixelForValue(3.5),x.right-x.left,y.getPixelForValue(2.5)-y.getPixelForValue(3.5));
+      ctx.restore();
+    }}]
+  });
+
+  cErr = new Chart(document.getElementById('chart-error'), {
+    type: 'bar',
+    data: {
+      labels: eLabels,
+      datasets:[{ label:'Predicted − Actual', data:eData, backgroundColor:eData.map(v=>v>0?'rgba(41,82,204,0.60)':'rgba(176,32,32,0.55)'), borderWidth:0, borderRadius:4 }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{
+        x:{ticks:{autoSkip:true,maxTicksLimit:14,font:{size:10},color:'#8b89b0'},grid:{color:'rgba(80,100,180,0.07)'}},
+        y:{title:{display:true,text:'Error (INR)',font:{size:11},color:'#8b89b0'},ticks:{font:{size:11},color:'#8b89b0'},grid:{color:'rgba(80,100,180,0.07)'}}
+      }
+    }
+  });
+
+  const accData = labPairs.map(e => calcAccuracy(e.meter, e.lab));
+  if (cAcc) cAcc.destroy();
+  cAcc = new Chart(document.getElementById('chart-accuracy'), {
+    type: 'bar',
+    data: {
+      labels: eLabels,
+      datasets:[{
+        label:'Prediction Accuracy %',
+        data: accData,
+        backgroundColor: accData.map(v => v === null ? 'transparent' : v >= 90 ? 'rgba(15,110,86,0.65)' : v >= 80 ? 'rgba(160,96,16,0.65)' : 'rgba(176,32,32,0.65)'),
+        borderWidth: 0,
+        borderRadius: 4
+      }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{display:false},
+        tooltip:{callbacks:{label: ctx => ctx.parsed.y !== null ? ctx.parsed.y.toFixed(1) + '%' : ''}}
+      },
+      scales:{
+        x:{ticks:{autoSkip:true,maxTicksLimit:14,font:{size:10},color:'#8b89b0'},grid:{color:'rgba(80,100,180,0.07)'}},
+        y:{
+          min:0, max:100,
+          title:{display:true,text:'Accuracy (%)',font:{size:11},color:'#8b89b0'},
+          ticks:{font:{size:11},color:'#8b89b0',callback: v => v + '%'},
+          grid:{color:'rgba(80,100,180,0.07)'}
+        }
+      }
+    },
+    plugins:[{id:'target90',beforeDraw(chart){
+      const {ctx,scales:{x,y}}=chart;
+      ctx.save();
+      ctx.strokeStyle='rgba(15,110,86,0.45)';
+      ctx.lineWidth=1.5;
+      ctx.setLineDash([6,4]);
+      const yPos=y.getPixelForValue(90);
+      ctx.beginPath(); ctx.moveTo(x.left,yPos); ctx.lineTo(x.right,yPos); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle='rgba(15,110,86,0.55)';
+      ctx.font='11px DM Sans,sans-serif';
+      ctx.fillText('90% target',x.right-70,yPos-5);
+      ctx.restore();
+    }}]
+  });
+}
+
+// ════════════════════════════════════════════════════════════════
+// SUPABASE SYNC  —  Strategy: Supabase is the single source of truth.
+//   • On any write (save/edit/delete) → push entire local array to Supabase.
+//   • On load / manual refresh         → pull entire array from Supabase.
+//   • "date" is the natural unique key; two readings on same date merge as one.
+//   • Offline: writes go to localStorage only; auto-retries when back online.
+// ════════════════════════════════════════════════════════════════
+
+// ════════════════════════════════════════════════════════════════
+// SUPABASE SYNC  — Direct SQL approach
+//   • Pull on load: fetch all rows for this sync_key, replace local cache
+//   • Insert: POST new row immediately on save
+//   • Update: PATCH row by id immediately on edit
+//   • Delete: DELETE row by id immediately
+//   • No local merge, no push-all, no tombstones
+//   • If Supabase unreachable, operation fails and error shown
+// ════════════════════════════════════════════════════════════════
+
+async function hashKey(raw) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(raw.trim().toLowerCase()));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('').slice(0,40);
+}
+
+function sbHead(extra) {
+  return Object.assign({
+    'Content-Type':  'application/json',
+    'apikey':        SB_ANON,
+    'Authorization': 'Bearer ' + SB_ANON
+  }, extra || {});
+}
+
+function setSyncBar(state, msg) {
+  const bar = document.getElementById('sync-bar');
+  const txt = document.getElementById('sync-msg');
+  if (bar) bar.className = 'sync-bar ' + state;
+  if (txt) txt.textContent = msg;
+}
+
+function toRow(e) {
+  const r = { sync_key: syncKey, entry_date: e.date, notes: e.notes || '' };
+  if (e.meter != null) r.meter = e.meter;
+  if (e.lab   != null) r.lab   = e.lab;
+  return r;
+}
+
+function fromRow(r) {
+  return {
+    id:    r.id,
+    date:  r.entry_date,
+    meter: r.meter != null ? parseFloat(r.meter) : null,
+    lab:   r.lab   != null ? parseFloat(r.lab)   : null,
+    notes: r.notes || ''
+  };
+}
+
+function syncTs() {
+  return new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+}
+
+// ── PULL: fetch all rows from Supabase, replace local cache ──────
+async function pullFromCloud() {
+  if (!syncEnabled) return;
+  setSyncBar('syncing', 'Connecting…');
+  try {
+    const res = await fetch(
+      `${SB_URL}/rest/v1/${SB_TABLE}?sync_key=eq.${encodeURIComponent(syncKey)}&order=entry_date.asc`,
+      { headers: sbHead() }
+    );
+    if (!res.ok) throw new Error('Pull failed ' + res.status);
+    const rows = await res.json();
+    entries = rows.map(fromRow);
+    saveData();
+    renderTable();
+    setSyncBar('synced', `Synced · ${syncTs()} · ${entries.length} entries`);
+  } catch(err) {
+    console.warn('[Sync] Pull error:', err);
+    setSyncBar('error', 'Sync error: ' + err.message + ' — showing local cache');
+  }
+}
+
+// ── INSERT: add one new entry to Supabase ────────────────────────
+async function sbInsert(e) {
+  if (!syncEnabled) return;
+  setSyncBar('syncing', 'Saving…');
+  const row = toRow(e);
+  const res = await fetch(
+    `${SB_URL}/rest/v1/${SB_TABLE}`,
+    { method: 'POST', headers: sbHead({'Prefer':'return=representation'}), body: JSON.stringify(row) }
+  );
+  if (!res.ok) { const t=await res.text(); throw new Error('Insert failed ' + res.status + ': ' + t); }
+  const inserted = await res.json();
+  // Update local entry with the server-assigned id
+  if (inserted && inserted[0]) e.id = inserted[0].id;
+  saveData();
+  setSyncBar('synced', 'Saved · ' + syncTs());
+}
+
+// ── UPDATE: patch one entry in Supabase by id ────────────────────
+async function sbUpdate(e) {
+  if (!syncEnabled) return;
+  if (!e.id) { await sbInsert(e); return; } // fallback if no id
+  setSyncBar('syncing', 'Saving…');
+  const row = toRow(e);
+  const res = await fetch(
+    `${SB_URL}/rest/v1/${SB_TABLE}?id=eq.${encodeURIComponent(e.id)}`,
+    { method: 'PATCH', headers: sbHead({'Prefer':'return=minimal'}), body: JSON.stringify(row) }
+  );
+  if (!res.ok) { const t=await res.text(); throw new Error('Update failed ' + res.status + ': ' + t); }
+  setSyncBar('synced', 'Saved · ' + syncTs());
+}
+
+// ── DELETE: remove one entry from Supabase by id ─────────────────
+async function sbDelete(e) {
+  if (!syncEnabled) return;
+  if (!e.id) return; // nothing to delete in cloud if never pushed
+  setSyncBar('syncing', 'Deleting…');
+  const res = await fetch(
+    `${SB_URL}/rest/v1/${SB_TABLE}?id=eq.${encodeURIComponent(e.id)}`,
+    { method: 'DELETE', headers: sbHead() }
+  );
+  if (!res.ok) { const t=await res.text(); throw new Error('Delete failed ' + res.status + ': ' + t); }
+  setSyncBar('synced', 'Deleted · ' + syncTs());
+}
+
+// ── Setup modal ──────────────────────────────────────────────────
+function openSetup() {
+  document.getElementById('setup-overlay').classList.add('show');
+  setTimeout(() => document.getElementById('setup-key-input').focus(), 80);
+}
+function closeSetup() {
+  document.getElementById('setup-overlay').classList.remove('show');
+}
+async function saveSetup() {
+  const raw = document.getElementById('setup-key-input').value.trim();
+  if (!raw) { alert('Please enter a sync key.'); return; }
+  syncKey = await hashKey(raw);
+  syncEnabled = true;
+  localStorage.setItem(SYNC_KEY_STORE, raw);
+  closeSetup();
+  await pullFromCloud();
+}
+function clearSetup() {
+  if (!confirm('Disconnect sync? Local data will be kept but no longer synced.')) return;
+  syncKey = ''; syncEnabled = false;
+  localStorage.removeItem(SYNC_KEY_STORE);
+  closeSetup();
+  setSyncBar('nokey', 'Sync not configured — tap Setup to enable cross-device sync');
+}
+
+// ── Init on page load ────────────────────────────────────────────
+async function initSync() {
+  const saved = localStorage.getItem(SYNC_KEY_STORE);
+  if (!saved) return;
+  syncKey = await hashKey(saved);
+  syncEnabled = true;
+  await pullFromCloud();
+}
+
+
+function showTab(name) {
+  ['log','table','chart','algo'].forEach((t,i) => {
+    document.getElementById('tab-'+t).style.display = t===name ? 'block' : 'none';
+    document.querySelectorAll('.tab')[i].classList.toggle('active', t===name);
+  });
+  if (name==='chart') setTimeout(renderCharts, 60);
+  if (name==='table') renderTable();
+}
+
+document.getElementById('inp-date').value = new Date().toISOString().slice(0,10);
+initSync();
+</script>
+</body>
+</html>
