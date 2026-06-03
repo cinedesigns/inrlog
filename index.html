@@ -1279,7 +1279,11 @@ function showTab(name) {
   if (name==='table') renderTable();
 }
 
-document.getElementById('inp-date').value = new Date().toISOString().slice(0,10);
+const _now = new Date();
+const _localDate = _now.getFullYear() + '-' +
+  String(_now.getMonth()+1).padStart(2,'0') + '-' +
+  String(_now.getDate()).padStart(2,'0');
+document.getElementById('inp-date').value = _localDate;
 initSync();
 </script>
 </body>
