@@ -346,7 +346,7 @@
   <div id="tab-algo" style="display:none;">
     <div class="algo-card">
       <h3>Prediction formula</h3>
-      <div class="formula-block">Predicted Lab INR = 0.5676 × Meter + 0.5890</div>
+      <div class="formula-block">Predicted Lab INR = 0.5645 × Meter + 0.5890</div>
       <div class="formula-block" style="margin-top:0.5rem;font-size:13px;background:var(--blue-bg);border-color:rgba(41,82,204,0.2);color:var(--blue-text);">Prediction Accuracy (%) = (Lab − |Lab − Predicted|) ÷ Lab × 100</div>
       <div class="algo-desc">
         Derived from linear regression on 26 paired readings (Oct 2025 – May 2026), where both meter and lab values were taken within minutes of each other. The meter consistently reads <strong>higher</strong> than the actual lab INR. A simple percentage (e.g. 75%) is less accurate because the offset is non-trivial at low values — the regression intercept (~0.59) corrects for this.
@@ -397,7 +397,7 @@
 </div>
 
 <script>
-const SLOPE = 0.5676, INTERCEPT = 0.5890;
+const SLOPE = 0.5645, INTERCEPT = 0.5890;
 
 // ── Supabase ─────────────────────────────────────────────────────
 const SB_URL   = 'https://rekhengdenismtwryuxg.supabase.co';
