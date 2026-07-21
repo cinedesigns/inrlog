@@ -636,7 +636,7 @@ function exportExcel() {
     const acc = (hasLab && hasMeter) ? calcAccuracy(e.meter, e.lab) : null;
     const statusStr = hasLab ? (e.lab >= 2.5 && e.lab <= 3.5 ? 'In range' : e.lab < 2.5 ? 'Low' : 'High') : '';
     rows.push([
-      fmtDate(e.date),
+      e.date,  // raw ISO for Excel serial conversion
       hasMeter ? e.meter : '',
       (hasMeter && pred != null) ? pred : '',
       hasLab ? e.lab : '',
@@ -659,6 +659,15 @@ function exportExcel() {
   const a = document.createElement('a');
   a.href = url; a.download = fname; a.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function isoToExcelDate(iso) {
+  // Excel serial: days since 1900-01-01 (with Lotus 1-2-3 leap year bug: 1900 treated as leap)
+  if (!iso) return null;
+  const [y, m, d] = iso.split('-').map(Number);
+  const date = new Date(Date.UTC(y, m - 1, d));
+  const epoch = new Date(Date.UTC(1899, 11, 30)); // Excel epoch
+  return Math.round((date - epoch) / 86400000);
 }
 
 function buildStyledXlsx(title, subtitle, headers, dataRows) {
@@ -774,11 +783,13 @@ function buildStyledXlsx(title, subtitle, headers, dataRows) {
     xf(0,10,6,1,'center',false),       // 19 acc bad white
     xf(2,4,6,1,'center',false),        // 20 number center white  (numFmt 2 = 0.00)
     xf(2,4,5,1,'center',false),        // 21 number center stripe
+    xf(164,4,5,1,'center',false),      // 22 date stripe
+    xf(164,4,6,1,'center',false),      // 23 date white
   ];
 
   const stylesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
-<numFmts count="1">${numFmt(2,'0.0')}</numFmts>
+<numFmts count="2">${numFmt(2,'0.0')}${numFmt(164,'dd-mmm-yy')}</numFmts>
 <fonts count="${fonts.length}">${fonts.join('')}</fonts>
 <fills count="${fills.length}">${fills.join('')}</fills>
 <borders count="${borders.length}">${borders.join('')}</borders>
@@ -854,8 +865,14 @@ function buildStyledXlsx(title, subtitle, headers, dataRows) {
     const numSi   = isStripe?21:20;
 
     rowsXml+=`<row r="${rn}" ht="16" customHeight="1">`;
-    // Date
-    rowsXml+=`<c r="${addr(rn,0)}" s="${dataSi}" t="s"><v>${ss(dateV)}</v></c>`;
+    // Date — written as Excel serial number with date format style
+    const dateSerial = isoToExcelDate(dateV);
+    const dateCellSi = isStripe ? 22 : 23;
+    if (dateSerial) {
+      rowsXml+=`<c r="${addr(rn,0)}" s="${dateCellSi}" t="n"><v>${dateSerial}</v></c>`;
+    } else {
+      rowsXml+=`<c r="${addr(rn,0)}" s="${dateCellSi}" t="s"><v>${ss('')}</v></c>`;
+    }
     // Meter (number)
     if(meterV!=='') rowsXml+=`<c r="${addr(rn,1)}" s="${numSi}" t="n"><v>${meterV}</v></c>`;
     else rowsXml+=`<c r="${addr(rn,1)}" s="${dataSi}" t="s"><v>${ss('')}</v></c>`;
