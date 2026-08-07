@@ -952,14 +952,17 @@ function buildINRXlsx(titleStr, dataRows) {
 
   // Row 1 title
   rowsXml+=`<row r="1" ht="36" customHeight="1">${SC(1,0,1,titleStr)}${Array.from({length:NCOLS-1},(_,i)=>EC(1,i+1,1)).join('')}</row>`;
-  // Row 2 spacer
-  rowsXml+=`<row r="2" ht="5" customHeight="1">${Array.from({length:NCOLS},(_,i)=>EC(2,i,3)).join('')}</row>`;
-  // Row 3 headers
-  rowsXml+=`<row r="3" ht="22" customHeight="1">${HEADERS.map((h,c)=>SC(3,c,4,h)).join('')}</row>`;
+  // Row 2 formula info
+  const formulaStr = 'Predicted Lab INR = 0.5 × Meter + 0.5     ·     Prediction Accuracy (%) = (Lab − |Lab − Predicted|) ÷ Lab × 100';
+  rowsXml+=`<row r="2" ht="18" customHeight="1">${SC(2,0,2,formulaStr)}${Array.from({length:NCOLS-1},(_,i)=>EC(2,i+1,2)).join('')}</row>`;
+  // Row 3 spacer
+  rowsXml+=`<row r="3" ht="5" customHeight="1">${Array.from({length:NCOLS},(_,i)=>EC(3,i,3)).join('')}</row>`;
+  // Row 4 headers
+  rowsXml+=`<row r="4" ht="22" customHeight="1">${HEADERS.map((h,c)=>SC(4,c,4,h)).join('')}</row>`;
 
   // Data rows
   dataRows.forEach((row,ri)=>{
-    const rn=ri+4, odd=ri%2===0;
+    const rn=ri+5, odd=ri%2===0;
     const cS=odd?5:6, nS=odd?9:10, notS=odd?7:8;
     const [dV,mV,pV,lV,aV,stV,ntV]=row;
 
@@ -990,7 +993,7 @@ function buildINRXlsx(titleStr, dataRows) {
   });
 
   const colsXml=`<cols><col min="1" max="1" width="11" customWidth="1"/><col min="2" max="2" width="8" customWidth="1"/><col min="3" max="3" width="11" customWidth="1"/><col min="4" max="4" width="9" customWidth="1"/><col min="5" max="5" width="13" customWidth="1"/><col min="6" max="6" width="17" customWidth="1"/><col min="7" max="7" width="38" customWidth="1"/></cols>`;
-  const mergesXml=`<mergeCells count="1"><mergeCell ref="A1:${LC}1"/></mergeCells>`;
+  const mergesXml=`<mergeCells count="2"><mergeCell ref="A1:${LC}1"/><mergeCell ref="A2:${LC}2"/></mergeCells>`;
 
   const sheetXml=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
